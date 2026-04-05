@@ -1,1 +1,139 @@
-t
+#include <ESP8266WiFi.h>
+#include <espnow.h>
+extern "C" {
+  #include "user_interface.h"
+}
+
+#define IN1 D1
+#define IN2 D2
+#define IN3 D3
+#define IN4 D4
+#define ENA D5
+#define ENB D6
+#define MOTOR_SPEED 800
+#define TURN_SPEED  600
+
+typedef struct {
+  char command;
+} Message;
+
+void forward();
+void backward();
+void left();
+void right();
+void stopMotor();
+
+void onReceive(uint8_t *mac, uint8_t *data, uint8_t len) {
+  Message msg;
+  memcpy(&msg, data, sizeof(msg));
+  char key = msg.command;
+
+  Serial.print("Received: ");
+  Serial.println(key);
+
+  switch (key) {
+    case 'w': case 'W':
+      forward();
+      Serial.println(">> FORWARD");
+      break;
+    case 's': case 'S':
+      backward();
+      Serial.println(">> BACKWARD");
+      break;
+    case 'a': case 'A':
+      left();
+      Serial.println(">> LEFT");
+      break;
+    case 'd': case 'D':
+      right();
+      Serial.println(">> RIGHT");
+      break;
+    case ' ':
+      stopMotor();
+      Serial.println(">> STOP");
+      break;
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  stopMotor();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  wifi_promiscuous_enable(1);
+  wifi_set_channel(1);
+  wifi_promiscuous_enable(0);
+
+  if (esp_now_init() != 0) {
+    Serial.println("ESP-NOW init failed!");
+    return;
+  }
+
+  esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
+  esp_now_register_recv_cb(onReceive);
+
+  Serial.println("");
+  Serial.println("=== ESP8266 Receiver Ready ===");
+  Serial.print("Channel: ");
+  Serial.println(wifi_get_channel());
+  Serial.println("Waiting for commands...");
+}
+
+void loop() {}
+
+void forward() {
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void backward() {
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void left() {
+  analogWrite(ENA, TURN_SPEED);
+  analogWrite(ENB, TURN_SPEED);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void right() {
+  analogWrite(ENA, TURN_SPEED);
+  analogWrite(ENB, TURN_SPEED);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void stopMotor() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
