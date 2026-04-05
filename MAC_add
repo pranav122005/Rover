@@ -1,10 +1,27 @@
-#include <WiFi.h>
+for (Esp32 Dev)
+#include <ESP8266WiFi.h>
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  Serial.println("ESP32 MAC Address:");
+  Serial.println("ESP8266 MAC Address:");
+  Serial.println(WiFi.macAddress());
+}
+
+void loop() {
+}
+
+
+
+for (NodeMcu)
+#include <ESP8266WiFi.h>
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("ESP8266 MAC Address:");
   Serial.println(WiFi.macAddress());
 }
 
