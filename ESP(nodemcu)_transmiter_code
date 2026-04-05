@@ -1,0 +1,83 @@
+reciver code
+
+#include <ESP8266WiFi.h>
+#include <espnow.h>
+extern "C" {
+  #include "user_interface.h"
+}
+
+uint8_t receiverMAC[] = {0x50, 0x02, 0x91, 0xE9, 0x0E, 0x53};
+
+typedef struct {
+  char command;
+} Message;
+
+Message msg;
+
+void onSent(uint8_t *mac, uint8_t status) {
+  Serial.print("Send Status: ");
+  Serial.println(status == 0 ? "Success" : "Failed");
+}
+
+void sendCommand(char cmd) {
+  msg.command = cmd;
+  esp_now_send(receiverMAC, (uint8_t *)&msg, sizeof(msg));
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  wifi_promiscuous_enable(1);
+  wifi_set_channel(1);
+  wifi_promiscuous_enable(0);
+
+  if (esp_now_init() != 0) {
+    Serial.println("ESP-NOW init failed!");
+    return;
+  }
+
+  esp_now_set_self_role(ESP_NOW_ROLE_CONTROLLER);
+  esp_now_register_send_cb(onSent);
+  esp_now_add_peer(receiverMAC, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
+
+  Serial.println("");
+  Serial.println("=== ESP8266 Transmitter Ready ===");
+  Serial.println("W=Forward | S=Backward | A=Left | D=Right | SPACE=Stop");
+}
+
+void loop() {
+  if (Serial.available()) {
+    char key = Serial.read();
+    if (key == '\n' || key == '\r') return;
+    switch (key) {
+      case 'w': case 'W':
+        sendCommand('W');
+        Serial.println(">> Sending: FORWARD");
+        break;
+      case 's': case 'S':
+        sendCommand('S');
+        Serial.println(">> Sending: BACKWARD");
+        break;
+      case 'a': case 'A':
+        sendCommand('A');
+        Serial.println(">> Sending: LEFT");
+        break;
+      case 'd': case 'D':
+        sendCommand('D');
+        Serial.println(">> Sending: RIGHT");
+        break;
+      case ' ':
+        sendCommand(' ');
+        Serial.println(">> Sending: STOP");
+        break;
+      default:
+        Serial.println("Unknown! Use W/A/S/D or SPACE");
+        break;
+    }
+  }
+}
